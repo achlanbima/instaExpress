@@ -14,19 +14,25 @@ const conn = mysql.createConnection({
   database: 'instaclone'
 })
 
+
+
 app.use(bodyParser.json())
 
-app.group('/api/v1', (router) => {
 
+
+app.group('/api/v1', (router) => {
+  
   router.post('/login', (req, res) => {
     const email = req.body.email
     const password = req.body.password
 
-    conn.query(`SELECT*FROM users WHERE email = '${email}' && password = '${password}'`, (err, rows, fields) => {
-      
+    conn.query(`SELECT*FROM users WHERE email = '${email}' AND password = '${password}'`, (err, rows, fields) => {
+      if (err) throw err
+
+
       if(rows.length == 1){
 
-        const token = jwt.sign({email:email}, 'rahasia')
+        const token = jwt.sign({email:email}, 'rahasia', { expiresIn: '1h' })
         res.send({rows,token})
       } else{
 
@@ -58,8 +64,8 @@ app.group('/api/v1', (router) => {
   
   router.get('/posts', expressJwt({secret: 'rahasia'}), (req, res) => {
     conn.query(`select * from v_posts`, (err, rows, fields) => {
-      if(err) throw err
-  
+      if(err) res.status(401).send("UNAUTHORIZE!")
+      
       res.send(rows)
   })
   })
@@ -79,17 +85,19 @@ app.group('/api/v1', (router) => {
     const userId = req.body.userId
 
     conn.query(`INSERT INTO posts VALUES (null,'${post}','${caption}', ${userId}, 0)`, (err, rows, fields) => {
-      if(err) throw err
-  
+      if(err) res.send(rows)
+
+      
+      
       res.send(rows)
   })
   })
 
-  router.patch('/post/:id', expressJwt({secret: 'rahasia'}),(req, res) => {
+  router.patch('/post/:id', expressJwt({secret: 'rahasia'}) ,(req, res) => {
     const id = req.params.id
     const caption = req.body.caption
 
-    conn.query(`UPDATE FROM posts SET caption = '${caption}' where id='${id}')`, (err, rows, fields) => {
+    conn.query(`UPDATE posts SET caption = '${caption}' where id='${id}'`, (err, rows, fields) => {
       if(err) throw err
   
       res.send(rows)
@@ -106,6 +114,15 @@ app.group('/api/v1', (router) => {
   })
   })
 
+});
+
+app.use(function (err, req, res, next) {
+  if (err) {
+    return res.send({
+      status: err.status,
+      message: err.message
+    });
+  }
 });
 
 app.listen('3000', () => console.log("App Start..."));
